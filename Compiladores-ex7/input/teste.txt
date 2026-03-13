@@ -1,0 +1,2 @@
+String nome = "jose";
+cout << "Meu nome é" << nome;
