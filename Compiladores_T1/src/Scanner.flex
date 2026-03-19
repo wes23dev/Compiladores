@@ -90,11 +90,11 @@ letraHex = [A-Fa-f]
 
 hexadecimal = "0x"({letraHex}|{digito})+
 
-qualquerLetra = "\."
+PONTO = "\."
 
 comentarioG = "/*"~"*/"
 
-simbolo = {PONTO_VIRG}|{ABRE_PAR}|{FECHA_PAR}|{ABRE_CH}|{FECHA_CH}|{OP_ATRIB}|{OP_CONCAT}|{OP_MENORIGUAL}|{qualquerLetra}|{virgula}
+simbolo = {PONTO_VIRG}|{ABRE_PAR}|{FECHA_PAR}|{ABRE_CH}|{FECHA_CH}|{OP_ATRIB}|{OP_CONCAT}|{OP_MENORIGUAL}|{PONTO}|{virgula}
 
 %%
 
