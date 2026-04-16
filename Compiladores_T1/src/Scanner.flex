@@ -99,18 +99,19 @@ simbolo = {PONTO_VIRG}|{ABRE_PAR}|{FECHA_PAR}|{ABRE_CH}|{FECHA_CH}|{OP_ATRIB}|{O
 %%
 
 
-{comentarioG} { System.out.println("[" + yyline + "," + yycolumn + "]" + " comentario_grande: " + yytext()); }
+
+{comentarioG} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " comentario_grande: " + yytext()); }
 
 {espaco} { /* ignorar */ }
 
-{palavrasReservadas} { System.out.println("[" + yyline + "," + yycolumn + "]" + " palavra_reservada: " + yytext()); }
+{palavrasReservadas} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " palavra_reservada: " + yytext()); }
 
-{simbolo} { System.out.println("[" + yyline + "," + yycolumn + "]" + " simbolo: " + yytext()); }
+{simbolo} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " simbolo: " + yytext()); }
 
-{ident} { System.out.println("[" + yyline + "," + yycolumn + "]" + " ident: " + yytext()); }
+{ident} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " ident: " + yytext()); }
 
-{numReal} { System.out.println("[" + yyline + "," + yycolumn + "]" + " num_real: " + yytext()); }
+{numReal} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " num_real: " + yytext()); }
 
-{hexadecimal} { System.out.println("[" + yyline + "," + yycolumn + "]" + " num_hexadecimal: " + yytext()); }
+{hexadecimal} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " num_hexadecimal: " + yytext()); }
 
-{strLiteral} { System.out.println("[" + yyline + "," + yycolumn + "]" + " str_literal: " + yytext()); }
+{strLiteral} { System.out.println("[" + (yyline + 1) + "," + yycolumn + "]" + " str_literal: " + yytext()); }
