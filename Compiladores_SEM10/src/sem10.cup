@@ -1,0 +1,154 @@
+import java_cup.runtime.*;
+
+parser code {:
+    boolean deveExecutarBloco = false;
+    double somatorio = 0; 
+    int totalExpressoes = 0; 
+:}
+
+/* TERMINAIS */
+terminal PTVIRG, PTO, MAIS, MENOS, DIV, MULT, MOD, ASSIGN;
+terminal ABRE_PARENT, FECHA_PARENT, ABRE_CHAVE, FECHA_CHAVE, ABRE_COLCH, FECHA_COLCH;
+terminal KW_IF, KW_ELSE;
+terminal String OP_RELACIONAL;
+terminal Double NUMBER;
+terminal String IDENT;
+
+/* NÃO TERMINAIS */
+non terminal if, else; 
+non terminal Boolean condicao; 
+non terminal stmt_list, stmt, assignment_stmt, expr_ptv;
+non terminal Double expr, term, factor, designator;
+
+/* REGRA DO IF */
+if ::=  
+        {: 
+            System.out.print("if("); 
+        :}
+        KW_IF ABRE_PARENT condicao:c FECHA_PARENT 
+        {:
+            parser.deveExecutarBloco = c;
+            System.out.println("){"); 
+        :}
+        ABRE_CHAVE stmt_list 
+        FECHA_CHAVE 
+        {: 
+            if (parser.deveExecutarBloco) {
+                int somatorioFinal = (int) Math.abs(parser.somatorio);
+                System.out.println("somatorio = " + somatorioFinal);
+                System.out.println("totalExpressoes = " + parser.totalExpressoes);
+            } 
+            System.out.print("}"); 
+        :}
+        else
+        ;
+
+/* REGRA DO ELSE */
+else ::= 
+        KW_ELSE 
+        {: 
+            parser.deveExecutarBloco = !parser.deveExecutarBloco;
+            System.out.println("else{");    
+        :}
+        ABRE_CHAVE stmt_list FECHA_CHAVE 
+        {: 
+            System.out.println("}");
+            parser.deveExecutarBloco = true; 
+        :}
+    |   
+        /* vazio */
+        {:
+            parser.deveExecutarBloco = true; 
+            System.out.println(); 
+        :}
+    ;
+
+/* REGRA DA CONDICAO */
+condicao ::= expr:e1 OP_RELACIONAL:op expr:e2
+        {: 
+            boolean resultado = false;
+            switch (op){
+                case "<":  resultado = (e1 < e2);   break;
+                case "<=": resultado = (e1 <= e2);  break;
+                case ">":  resultado = (e1 > e2);   break;
+                case ">=": resultado = (e1 >= e2);  break;
+                case "==": resultado = (e1 == e2);  break;
+                case "!=": resultado = (e1 != e2);  break;
+                default:   System.out.println("*Simbolo desconhecido");
+            }
+            parser.deveExecutarBloco = resultado;
+            System.out.print(resultado);
+            RESULT = resultado; 
+        :};
+
+/* REGRAS DE ESTRUTURA E DECLARAÇÃO */
+stmt_list ::= 
+            stmt_list stmt
+        |
+            /* vazio */
+        ;
+
+stmt ::=
+            assignment_stmt
+        |   expr_ptv
+        |   PTVIRG          
+        ;
+
+assignment_stmt ::= 
+            IDENT:i ASSIGN expr:e PTVIRG
+            {: 
+                if (parser.deveExecutarBloco) {
+                    System.out.println(i + " = " + e); 
+                }
+            :}
+        ;
+
+expr_ptv ::= 
+            expr:e 
+            {: 
+                if (parser.deveExecutarBloco) {
+                    parser.somatorio += e; 
+                    parser.totalExpressoes++; 
+                    // O System.out.println parcial daqui foi removido para limpar a saída
+                }
+            :} PTVIRG;
+
+/* EXPRESSÕES (Associatividade à esquerda) */
+expr    ::= 
+            expr:e MAIS term:t
+            {:  RESULT = e + t; :}
+        |   expr:e MENOS term:t
+            {:  RESULT = e - t; :}      
+        |   MENOS term:t
+            {:  RESULT = -t; :}             
+        |   term:t
+            {:  RESULT = t.doubleValue(); :}
+        ;
+          
+/* TERMOS (Associatividade correta para MULT/DIV da esquerda para a direita) */
+term   ::= 
+            term:t MULT factor:f
+            {: RESULT = t * f; :}                 
+        |   term:t DIV factor:f
+            {: RESULT = t / f;  :}
+        |   factor:f
+            {: RESULT = f.doubleValue(); :}
+        ;
+                
+factor    ::=  
+            NUMBER:n 
+            {: RESULT = n.doubleValue(); :}
+        |   ABRE_PARENT expr:e FECHA_PARENT
+            {: RESULT = e.doubleValue(); :}
+        |   designator:d
+            {: RESULT = d.doubleValue(); :} 
+        ;
+
+designator ::= 
+            designator ABRE_COLCH expr FECHA_COLCH               
+            {:  RESULT = Double.valueOf(1.0); :}
+        |   designator PTO IDENT 
+            {:  RESULT = Double.valueOf(1.0); :}           
+        |   IDENT
+            {:  RESULT = Double.valueOf(1.0); :}
+        ;
