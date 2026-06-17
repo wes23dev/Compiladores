@@ -1,0 +1,15 @@
+program Teste01
+{
+    void main()
+        int x;
+        int y;
+    { 
+        x = 10;
+        y = 3;
+        if x > y {
+            print(x);
+        } else {
+            print(y);
+        }
+    }
+}

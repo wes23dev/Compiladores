@@ -1,0 +1,300 @@
+package parser;
+
+import java_cup.runtime.*;
+import erros.ListaErros;
+
+parser code {:
+    private ListaErros listaErros;
+
+    public void setListaErros(ListaErros listaErros) {
+        this.listaErros = listaErros;
+    }
+
+    /* Sobrescrita do syntax_error para captura generica */
+    public void syntax_error(Symbol s) {
+        defineErro(s, "Sintático - Erro de sintaxe");
+    }
+
+    public void unrecovered_syntax_error(Symbol s) throws Exception {
+        defineErro(s, "Sintático - Erro irrecuperável de sintaxe");
+        throw new Exception("Erro irrecuperável");
+    }
+
+    /* defineErro com Symbol e texto */
+    public void defineErro(Symbol s, String mensagem) {
+        if (listaErros != null) {
+            listaErros.addErro(s.left, s.right, mensagem);
+        }
+    }
+
+    /* defineErro somente com texto (usa cur_token) */
+    public void defineErro(String mensagem) {
+        Symbol s = cur_token;
+        if (s != null && listaErros != null) {
+            listaErros.addErro(s.left, s.right, mensagem);
+        }
+    }
+
+    /* Reduz janela de recuperacao para 1 token apos erro */
+    protected int error_sync_size() { return 1; }
+:};
+
+/* TERMINAIS */
+terminal         PROGRAM, CLASS, IF, ELSE, WHILE, READ, PRINT, RETURN;
+terminal         VOID, BREAK, FINAL, NEW, INT, FLOAT;
+terminal String  IDENT;
+terminal String  NUM_INTEIRO, NUM_REAL;
+
+terminal         MAIS, MENOS, MULT, DIV, MOD;
+terminal         IGUAL, DIFERENTE, MENOR, MAIOR, MENOR_IGUAL, MAIOR_IGUAL;
+terminal         AND, OR;
+terminal         INCREMENTO, DECREMENTO;
+terminal         ATRIB;
+terminal         PTVIRG, VIRGULA, PONTO;
+terminal         ABRE_PAR, FECHA_PAR;
+terminal         ABRE_COL, FECHA_COL;
+terminal         ABRE_CHAVE, FECHA_CHAVE;
+
+/* NAO TERMINAIS */
+non terminal programa;
+non terminal lista_decl_const, decl_const;
+non terminal lista_decl_var, decl_var;
+non terminal lista_decl_class, decl_class;
+non terminal lista_var_class;
+non terminal tipo;
+non terminal lista_metodos, metodo;
+non terminal param_list, param;
+non terminal lista_decl_var_local;
+non terminal bloco, lista_statement, statement;
+non terminal designator, designator_statement;
+non terminal cond_if, cond_while;
+non terminal condition, condterm, condfact;
+non terminal relop;
+non terminal expr, termo, fator;
+non terminal addop, mulop;
+non terminal act_pars_list;
+non terminal opt_expr;
+non terminal lista_ident_var;
+non terminal opt_else;
+non terminal tipo_retorno;
+non terminal form_pars;
+
+/* Precedencias para resolver conflito do dangling else */
+precedence left ELSE;
+
+/* ===================== GRAMATICA ===================== */
+
+start with programa;
+
+/* Program = "program" ident {ConstDecl} {VarDecl} {ClassDecl} "{" {MethodDecl} "}" */
+programa ::= PROGRAM IDENT
+             lista_decl_const
+             lista_decl_var
+             lista_decl_class
+             ABRE_CHAVE lista_metodos FECHA_CHAVE
+           ;
+
+/* ---------- Constantes ---------- */
+lista_decl_const ::= lista_decl_const decl_const
+                   | /* vazio */
+                   ;
+
+/* ConstDecl = "final" Type ident "=" number ";" */
+decl_const ::= FINAL tipo IDENT ATRIB NUM_INTEIRO PTVIRG
+             | FINAL tipo IDENT ATRIB NUM_REAL PTVIRG
+             ;
+
+/* ---------- Variaveis globais ---------- */
+lista_decl_var ::= lista_decl_var decl_var
+                 | /* vazio */
+                 ;
+
+/* VarDecl = Type ident {"," ident} ";" */
+decl_var ::= tipo IDENT PTVIRG
+           | tipo IDENT VIRGULA lista_ident_var PTVIRG
+           /* ===== REGRA DE ERRO 5: VarDecl sem ponto e virgula ===== */
+           | tipo IDENT error
+               {: parser.defineErro("Sintático - Declaração de variável sem ponto e vírgula");  :}
+           ;
+
+lista_ident_var ::= IDENT
+                  | lista_ident_var VIRGULA IDENT
+                  ;
+
+/* ---------- Classes ---------- */
+lista_decl_class ::= lista_decl_class decl_class
+                   | /* vazio */
+                   ;
+
+/* ClassDecl = "class" ident "{" {VarDecl} "}" */
+decl_class ::= CLASS IDENT ABRE_CHAVE lista_var_class FECHA_CHAVE
+             ;
+
+lista_var_class ::= lista_var_class decl_var
+                  | /* vazio */
+                  ;
+
+/* ---------- Tipo ---------- */
+tipo ::= INT
+       | FLOAT
+       | IDENT
+       ;
+
+/* ---------- Metodos ---------- */
+lista_metodos ::= lista_metodos metodo
+                | /* vazio */
+                ;
+
+/* MethodDecl = (Type | "void") ident "(" [FormPars] ")" {VarDecl} Block */
+metodo ::= tipo_retorno IDENT ABRE_PAR form_pars FECHA_PAR lista_decl_var_local bloco
+         ;
+
+tipo_retorno ::= tipo
+               | VOID
+               ;
+
+form_pars ::= param_list
+            | /* vazio */
+            ;
+
+param_list ::= param
+             | param_list VIRGULA param
+             ;
+
+param ::= tipo IDENT
+        ;
+
+
+
+
+lista_decl_var_local ::= lista_decl_var_local decl_var
+                        | /* vazio */
+                        ;
+
+
+
+/* ---------- Bloco / Statements ---------- */
+bloco ::= ABRE_CHAVE lista_statement FECHA_CHAVE
+        ;
+
+lista_statement ::= lista_statement statement
+                  | /* vazio */
+                  ;
+
+statement ::= designator_statement PTVIRG
+            | INT IDENT PTVIRG
+            | INT IDENT VIRGULA lista_ident_var PTVIRG
+            | FLOAT IDENT PTVIRG
+            | FLOAT IDENT VIRGULA lista_ident_var PTVIRG
+            /* ===== IF normal ===== */
+            | IF cond_if bloco opt_else
+            /* ===== WHILE normal ===== */
+            | WHILE cond_while bloco
+            | BREAK PTVIRG
+            /* ===== RETURN normal ===== */
+            | RETURN opt_expr PTVIRG
+            /* ===== REGRA DE ERRO 6: return sem ponto e virgula (regra errada) ===== */
+            | RETURN opt_expr error
+                {: parser.defineErro("Sintático - return sem ponto e vírgula");  :}
+            | READ ABRE_PAR designator FECHA_PAR PTVIRG
+            | PRINT ABRE_PAR expr FECHA_PAR PTVIRG
+            | bloco
+
+
+            
+            /* ===== REGRA DE ERRO 1: IF sem parenteses (regra errada) ===== */
+            | IF:i error bloco opt_else
+                {: parser.defineErro(new Symbol(0, ileft, iright), "Sintático - IF sem parênteses na condição");  :}
+            /* ===== REGRA DE ERRO 2: WHILE sem parenteses (error token) ===== */
+            | WHILE:w error bloco
+                {: parser.defineErro(new Symbol(0, wleft, wright), "Sintático - WHILE sem parênteses na condição");  :}
+            /* ===== REGRA DE ERRO 3: Comando ou expressão incompleta (error token) ===== */
+            | error PTVIRG
+                {: parser.defineErro("Sintático - Comando ou expressão incompleta");  :}
+            ;
+
+opt_else ::= ELSE bloco
+           | /* vazio */
+           ;
+
+/* Condicao do IF entre parenteses */
+cond_if ::= ABRE_PAR condition FECHA_PAR
+          ;
+
+/* Condicao do WHILE entre parenteses */
+cond_while ::= ABRE_PAR condition FECHA_PAR
+             ;
+
+/* ---------- Designator e Atribuicao ---------- */
+designator_statement ::= designator ATRIB expr
+                       | designator ABRE_PAR act_pars_list FECHA_PAR
+                       | designator ABRE_PAR FECHA_PAR
+                       | designator INCREMENTO
+                       | designator DECREMENTO
+                       ;
+
+designator ::= IDENT
+             | designator PONTO IDENT
+             | designator ABRE_COL expr FECHA_COL
+             ;
+
+/* ---------- Condicoes ---------- */
+condition ::= condterm
+            | condition OR condterm
+            /* ===== REGRA DE ERRO 4: Condição sem operador relacional ===== */
+            | error
+                {: parser.defineErro("Sintático - Condição sem operador relacional");  :}
+            ;
+
+condterm ::= condfact
+           | condterm AND condfact
+           ;
+
+condfact ::= expr relop expr
+           ;
+
+relop ::= IGUAL
+        | DIFERENTE
+        | MAIOR
+        | MAIOR_IGUAL
+        | MENOR
+        | MENOR_IGUAL
+        ;
+
+/* ---------- Expressoes ---------- */
+expr ::= termo
+       | expr addop termo
+       | MENOS termo
+       ;
+
+termo ::= fator
+        | termo mulop fator
+        ;
+
+fator ::= designator
+        | designator ABRE_PAR act_pars_list FECHA_PAR
+        | designator ABRE_PAR FECHA_PAR
+        | NUM_INTEIRO
+        | NUM_REAL
+        | NEW IDENT
+        | NEW IDENT ABRE_COL expr FECHA_COL
+        | ABRE_PAR expr FECHA_PAR
+        ;
+
+addop ::= MAIS
+        | MENOS
+        ;
+
+mulop ::= MULT
+        | DIV
+        | MOD
+        ;
+
+/* ---------- Parametros reais ---------- */
+act_pars_list ::= expr
+                | act_pars_list VIRGULA expr
+                ;
+
+opt_expr ::= expr
+           | /* vazio */
+           ;
